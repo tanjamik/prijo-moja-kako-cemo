@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mreža poverenja — Plan implementacije</title>
+<style>
+  :root{
+    --zelena:#C0DD97; --plava:#B5D4F4; --zuta:#FAC775; --crvena:#F7C1C1; --siva:#F1EFE8;
+    --bg:#f7f6f2; --card:#ffffff; --ink:#232323; --muted:#77726a; --border:#e5e1d8;
+    --accent:#3d5a80;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);font-size:14px}
+  header{background:var(--card);border-bottom:1px solid var(--border);padding:18px 24px;position:sticky;top:0;z-index:10}
+  .hrow{display:flex;align-items:center;gap:20px;flex-wrap:wrap;max-width:1200px;margin:0 auto}
+  h1{font-size:19px;font-weight:700}
+  h1 small{color:var(--muted);font-weight:400;font-size:12px;display:block;margin-top:2px}
+  .total{flex:1;min-width:260px}
+  .pbar{height:10px;background:var(--siva);border-radius:6px;overflow:hidden}
+  .pbar>div{height:100%;background:var(--zelena);transition:width .3s;border-radius:6px}
+  .pnums{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:4px}
+  .pnums b{color:var(--ink)}
+  .hbtns{display:flex;gap:8px}
+  button{cursor:pointer;font:inherit}
+  .btn{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:7px 13px;font-size:13px}
+  .btn:hover{border-color:var(--accent);color:var(--accent)}
+  main{max-width:1200px;margin:0 auto;padding:18px 24px 80px}
+
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:10px;margin-bottom:18px}
+  .stat{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 12px;cursor:pointer}
+  .stat.on{outline:2px solid var(--accent)}
+  .stat .mn{font-size:11px;color:var(--muted);font-weight:600;letter-spacing:.3px}
+  .stat .mp{font-size:18px;font-weight:700;margin:3px 0}
+  .stat .pbar{height:5px}
+
+  .filters{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:center}
+  input[type=text],select{font:inherit;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card)}
+  input[type=text]{flex:1;min-width:180px}
+  .chip{border:1px solid var(--border);background:var(--card);border-radius:20px;padding:5px 12px;font-size:12px}
+  .chip.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+  .epic{background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:12px;overflow:hidden}
+  .ehead{display:flex;align-items:center;gap:12px;padding:13px 16px;cursor:pointer;user-select:none}
+  .ehead:hover{background:#fbfaf7}
+  .arrow{transition:transform .15s;color:var(--muted);font-size:11px}
+  .open .arrow{transform:rotate(90deg)}
+  .ename{font-weight:600;font-size:14.5px;flex:1}
+  .ename .ref{color:var(--muted);font-weight:400;font-size:12px;margin-left:6px}
+  .ems{font-size:11px;background:var(--siva);border-radius:5px;padding:2px 7px;color:#555;white-space:nowrap}
+  .ecount{font-size:12px;color:var(--muted);white-space:nowrap}
+  .ebar{width:110px}
+  .tasks{border-top:1px solid var(--border);display:none}
+  .open .tasks{display:block}
+  .task{display:flex;align-items:center;gap:10px;padding:8px 16px 8px 20px;border-bottom:1px solid #f2f0ea}
+  .task:last-of-type{border-bottom:none}
+  .task:hover{background:#fbfaf7}
+  .tname{flex:1;line-height:1.35}
+  .tname .ref{color:var(--muted);font-size:11.5px;margin-left:6px}
+  .done .tname{text-decoration:line-through;color:var(--muted)}
+  .st{border:none;border-radius:6px;padding:4px 8px;font-size:11.5px;font-weight:600;width:110px;appearance:none;text-align:center;cursor:pointer}
+  .st0{background:var(--siva);color:#555}
+  .st1{background:var(--plava);color:#1e3a5f}
+  .st2{background:var(--crvena);color:#7a2020}
+  .st3{background:var(--zelena);color:#2f4d12}
+  .pri{font-size:10.5px;font-weight:700;border-radius:5px;padding:2px 6px;white-space:nowrap}
+  .priV{background:var(--crvena);color:#7a2020}
+  .priS{background:var(--zuta);color:#7a5200}
+  .priN{background:var(--siva);color:#666}
+  .del{background:none;border:none;color:#c8c2b6;font-size:15px;padding:0 4px;visibility:hidden}
+  .task:hover .del{visibility:visible}
+  .del:hover{color:#c0392b}
+  .addrow{display:flex;gap:8px;padding:10px 16px;background:#fbfaf7}
+  .addrow input{flex:1}
+  .addrow select{width:auto}
+  .empty{padding:30px;text-align:center;color:var(--muted)}
+  footer{text-align:center;color:var(--muted);font-size:12px;padding:20px}
+  .legend{display:flex;gap:14px;font-size:11.5px;color:var(--muted);flex-wrap:wrap;margin-bottom:14px}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+</style>
+</head>
+<body>
+<header>
+  <div class="hrow">
+    <h1>Mreža poverenja — Plan implementacije<small>Praćenje izrade po Kompletnoj specifikaciji v3.9</small></h1>
+    <div class="total">
+      <div class="pnums"><span>Ukupan napredak</span><span><b id="tDone">0</b> / <span id="tAll">0</span> (<b id="tPct">0%</b>)</span></div>
+      <div class="pbar"><div id="tBar" style="width:0%"></div></div>
+    </div>
+    <div class="hbtns">
+      <button class="btn" onclick="exportJSON()">Export JSON</button>
+      <button class="btn" onclick="document.getElementById('imp').click()">Import</button>
+      <input type="file" id="imp" accept=".json" style="display:none" onchange="importJSON(this)">
+    </div>
+  </div>
+</header>
+<main>
+  <div class="stats" id="stats"></div>
+  <div class="filters">
+    <input type="text" id="q" placeholder="Pretraga taskova…" oninput="render()">
+    <select id="fSt" onchange="render()">
+      <option value="">Svi statusi</option>
+      <option value="0">Otvoren</option><option value="1">U toku</option>
+      <option value="2">Blokiran</option><option value="3">Završen</option>
+    </select>
+    <select id="fPri" onchange="render()">
+      <option value="">Svi prioriteti</option>
+      <option value="V">Visok</option><option value="S">Srednji</option><option value="N">Nizak</option>
+    </select>
+    <button class="chip" id="fOpen" onclick="hideDone=!hideDone;render()">Sakrij završene</button>
+    <button class="chip" onclick="expandAll(true)">Otvori sve</button>
+    <button class="chip" onclick="expandAll(false)">Zatvori sve</button>
+  </div>
+  <div class="legend">
+    <span><i style="background:var(--siva)"></i>Otvoren</span>
+    <span><i style="background:var(--plava)"></i>U toku</span>
+    <span><i style="background:var(--crvena)"></i>Blokiran</span>
+    <span><i style="background:var(--zelena)"></i>Završen</span>
+    <span style="margin-left:auto">Boje prate palete iz specifikacije (§10.4)</span>
+  </div>
+  <div id="epics"></div>
+</main>
+<footer>Napredak se čuva samo u ovoj sesiji — koristite Export JSON za trajno čuvanje, Import za nastavak.</footer>
+
+<script>
+const MS = {
+  M0:"Infrastruktura", M1:"Baza podataka", M2:"Auth i registracija", M3:"Backend logika",
+  M4:"API i notifikacije", M5:"Frontend", M6:"Bezbednost", M7:"QA i go-live"
+};
+// t: [naslov, prioritet(V/S/N), ref]
+const PLAN = [
+{id:"E1",ms:"M0",naziv:"Infrastruktura i okruženje",ref:"§18",t:[
+["Zakupi EU VPS (Hetzner/OVH, 4 CPU / 8GB RAM)","V","§18,§23"],
+["Postavi Docker Compose stack (backend, frontend, Postgres, Redis, Keycloak, Nginx)","V","§18"],
+["Konfiguriši Nginx reverse proxy + Let's Encrypt SSL (TLS 1.3)","V","§18"],
+["Podigni PostgreSQL 15+","V","§18"],
+["Podigni Redis (cache, blacklist, WebSocket channel layer)","V","§18"],
+["Deploy Keycloak instance","V","§18"],
+["Postavi Cloudflare WAF ispred (DDoS, managed rules)","V","§17.27"],
+["Konfiguriši email servis (Mailgun/Sendgrid ili self-hosted Postal)","S","§18"],
+["Postavi Sentry (self-hosted) za error tracking","S","§18"],
+["Postavi Grafana Loki ili syslog za logove","S","§18,§17.22"],
+["Instaliraj ClamAV za skeniranje upload fajlova","V","§17.9"],
+["Uključi Trivy/Snyk skeniranje + Dependabot/Renovate","S","§17.17"],
+["Docker hardening (non-root, read-only fs, resource limiti)","V","§17.16"],
+["DNS setup i zaštita domena (DNSSEC, registrar lock)","S","§17.15"]
+]},
+{id:"E2",ms:"M1",naziv:"Data model — geografija i korisnici",ref:"§19.2–19.3",t:[
+["Kreiraj tabele region / okrug / opstina (naziv, skraćenica, opis)","V","§19.2"],
+["Seed geografije: svi regioni, okruzi i opštine Srbije sa skraćenicama (VOJ, JB, NS…)","V","§2"],
+["Kreiraj tabelu korisnik (status, kontakti, soft-delete, keycloak_id)","V","§19.3"],
+["Partial unique index korisnik(email) WHERE deleted_at IS NULL","V","§19.3"],
+["Kreiraj tabelu korisnik_uloga (nivo, specijalizacija, lokacija, deleted_at)","V","§19.3"],
+["UNIQUE partial index korisnik_uloga(korisnik_id, lokacija) — jedna pozicija po lokaciji","V","§4,§19.3"],
+["Kreiraj tabelu email_verifikacija (token, JSONB podaci bez password-a)","V","§6.4,§19.3"],
+["Kreiraj tabelu registracija_zahtev (status, odobravač, eskalacija)","V","§19.3"]
+]},
+{id:"E3",ms:"M1",naziv:"Data model — faze, taskovi, ostalo",ref:"§19.4–19.8",t:[
+["Kreiraj tabele faza + sablon_task (soft-delete, CASCADE, partial unique redni_broj)","V","§19.4"],
+["Kreiraj tabelu faza_instanca (status: nije_pokrenuta/aktivna/ceka_potvrdu/zavrsena)","V","§19.4"],
+["Kreiraj tabelu task (nivo, faza_instanca, van_faze, iz_sablona, tip, prioritet, status, parent)","V","§19.5"],
+["CHECK constraint: status='blokiran' zahteva razlog blokade","V","§19.5"],
+["Trigger: podtask samo jedan nivo dubine","V","§11.2,§19.5"],
+["ON DELETE CASCADE na task.parent_task_id i faza_instanca FK-ove","V","§19.5"],
+["Kreiraj tabele task_izvrsilac, task_watcher (rucno_dodat flag)","V","§19.5"],
+["Kreiraj tabele task_komentar, task_attachment (max 25MB CHECK)","V","§19.5"],
+["Kreiraj tabelu predlog_podtask (status, razlog odbijanja)","V","§19.5"],
+["Kreiraj tabelu resurs (fajl ili link CHECK, soft-delete)","V","§19.6"],
+["Kreiraj univerzalni audit_log (denormalizovan korisnik_ime, nikad se ne briše)","V","§19.7"],
+["Kreiraj tabelu inbox_stavka (tip CHECK, CASCADE od korisnika)","V","§19.8"],
+["Cleanup cron: anonimizacija korisnika + fizičko brisanje taskova/šablona/resursa posle 30 dana","V","§19.1"],
+["Migracije i verzionisanje šeme","S","§19"]
+]},
+{id:"E4",ms:"M2",naziv:"Keycloak i autentifikacija",ref:"§17.2–17.5",t:[
+["Kreiraj realm i OIDC klijente (frontend SPA + backend)","V","§17.2"],
+["Uključi obaveznu 2FA (TOTP) za sve korisnike","V","§17.2"],
+["Keycloak hardening (brute-force zaštita, session limiti, admin izolacija)","V","§17.3"],
+["Integracija Keycloak JS adapter na frontendu","V","§18"],
+["Token revokacija: disable nalog + revoke sesija + Redis blacklist (TTL 15 min)","V","§7.4,§17.5"],
+["Backend provera blacklist-a na svakom API zahtevu (keycloak_id ključ)","V","§17.5,§20.2"],
+["2FA recovery kodovi i reset procedura","S","§17.2"]
+]},
+{id:"E5",ms:"M2",naziv:"Registracija i lanac odobravanja",ref:"§6,§21.1",t:[
+["Registraciona forma: ime, prezime, email, uloga (nivo + specijalizacija), lokacija, opcioni kontakti","V","§6.4,§9.1"],
+["hCaptcha integracija na formi","V","§6.4"],
+["Email verifikacija: token, slanje maila, anti-enumeration (404, rate-limit 30/min)","V","§6.4,§21.1"],
+["Stranica za postavljanje password-a iz email linka (password ide direktno u Keycloak)","V","§6.4,§22.1"],
+["Kreiranje disabled Keycloak naloga + korisnik zapisa 'čeka odobrenje'","V","§6.4"],
+["Standardni lanac odobravanja (samo GENERALNI koordinator nivoa iznad)","V","§6.1"],
+["Fallback eskalacija kad nema generalnog na lokaciji (do admina)","V","§6.2"],
+["Prvi koji odobri rešava / prvi koji odbije odbija za sve","V","§6.3"],
+["Cron: podsetnik na 24h, auto-eskalacija posle 3 dana, auto-odbijanje na kraju","V","§6.3"],
+["UI upozorenje + checkbox potvrde identiteta za eskalirane zahteve","S","§6.5"],
+["Odbijanje: cleanup (soft-delete korisnika, brisanje Keycloak naloga) + ponovna registracija","V","§6.6"],
+["Optimistic locking na odobravanju registracije","S","§20.2"],
+["Bootstrap: admin kreira prvog glavnog koordinatora","V","§6.7"],
+["Rate limiting registracije: 3 zahteva po IP na sat","V","§6.4"]
+]},
+{id:"E6",ms:"M3",naziv:"Uloge, RBAC i upravljanje korisnicima",ref:"§3–5,§7,§17.6",t:[
+["Implementiraj 6 nivoa uloga + admin i 8 specijalizacija (KNT, VDV, LOG, MKT, IT, ANL, PRV, FIN)","V","§3,§4"],
+["Geografski RBAC middleware: nivo + lokacija na svakom zahtevu (5 provera)","V","§17.6,§20.2"],
+["Razdvoji operativna vs organizaciona prava (organizaciona samo generalni)","V","§4"],
+["Matrica vidljivosti: full CRUD svoj domen, read-only iznad/pored po pravilima","V","§5"],
+["Read-only pristup glavnog nad drugim regionima","V","§3.2"],
+["Anonimno poređenje opština ('Opština A', 'Opština B')","S","§5,§12.4"],
+["Više uloga po korisniku — prava per lokacija, selektor aktivne uloge","V","§9.3"],
+["Statusi korisnika: Aktivan / Pauza / Uklonjen (pauza = organizaciona, token važi)","V","§9.2"],
+["Uklanjanje korisnika po matrici (samo generalni odgovarajućeg nivoa)","V","§7.1"],
+["Posledice uklanjanja: taskovi bez izvršioca, eskalacija zahteva, auto-odbijanje predloga, skidanje watchera","V","§7.3"],
+["Postavljanje na poziciju + promena/uklanjanje specijalizacije (samo generalni)","V","§7.2"],
+["Vidljivost aktivnosti tima ('pre 2 sata') za koordinatore","N","§9.4"],
+["Admin panel: geografija, korisnici, fallback odobravanje, resursi, revert soft-delete","V","§3.1,§22.1"]
+]},
+{id:"E7",ms:"M3",naziv:"Faze rada",ref:"§10,§21.3–21.9",t:[
+["CRUD faza — samo generalni glavni (naziv, opis, rok, redni broj, min 1 šablonski task)","V","§10.2,§10.3"],
+["Eager kreiranje: faza_instanca + taskovi iz šablona za SVE opštine u regionu","V","§10.3,§21.3"],
+["Implicitno pokretanje instance (prvi task u 'U toku' → aktivna)","V","§10.3"],
+["Ručno zatvaranje: opštinski generalni predlaže → okružni generalni potvrđuje","V","§10.3"],
+["Override potvrde: generalni regionalni ili glavni umesto okružnog","V","§10.2"],
+["Auto-zatvaranje: svi šablonski taskovi Završen/Otkazan","V","§21.8"],
+["Prebacivanje ad-hoc taskova (+ podtaskova) u sledeću nezatvorenu fazu pri zatvaranju","V","§10.3,§21.8"],
+["Reaktivacija eksplicitna: novi šablonski task reaktivira zatvorene instance (uz upozorenje)","V","§10.3,§10.6"],
+["Reaktivacija implicitna: vraćanje taska iz Završen/Otkazan → instanca opet aktivna","V","§10.3,§21.4"],
+["Brisanje faze: soft-delete kaskada + upozorenje + revert endpoint (24h)","V","§10.6,§21.7"],
+["Izmena šablonskog taska propagira na sve opštine; uklanjanje = soft-delete svuda","V","§10.6,§21.6"],
+["Kalkulacija kašnjenja — apsolutno (rok prošao = kasni; >5 dana = ozbiljno)","V","§10.4,§21.9"],
+["Procenat završenosti (šablonski taskovi, otkazani se izuzimaju; okrug = prosek opština)","V","§10.5"],
+["Promena roka → ponovna kalkulacija kašnjenja za sve opštine","S","§10.6"]
+]},
+{id:"E8",ms:"M3",naziv:"Sistem taskova",ref:"§11,§21.4–21.6",t:[
+["CRUD taskova na 3 nivoa (regionalni/okružni/opštinski) sa geografskim opsegom","V","§11.1"],
+["Generisanje ID-jeva: {REG}-R-XXX, {REG}-{OKR}-XXX, {REG}-{OKR}-{OPS}-XXXX + sufiksi podtaskova, bez recikliranja","V","§11.3"],
+["Ad-hoc i van-faze taskovi (žuta traka, ne ulaze u procenat, samo otkazivanje)","V","§11.1,§11.7"],
+["Podtaskovi: 1 nivo, nasleđuju nivo/fazu, parent ne može u Završen dok nisu gotovi, kaskadno otkazivanje","V","§11.2"],
+["6 statusa, sve tranzicije dozvoljene (osim parent izuzetka), audit na svaku promenu","V","§11.6,§21.4"],
+["'Na pregledu' flow: notifikacija watcherima (informativno), izvršilac/koordinator zaključuje","V","§11.6"],
+["Atributi menjaju samo kreator + koordinator; izvršioci samo status","V","§11.6"],
+["8 tipova taskova poravnatih sa specijalizacijama","V","§11.5"],
+["Watcheri: auto koordinator nivoa iznad, nikad izvršilac, preračunavanje pri promeni izvršilaca, ručno dodavanje","V","§11.8,§21.5"],
+["Više izvršilaca bez limita (i nula); self-assign člana tima na bilo koji task u opštini","V","§11.9,§11.10"],
+["Dodeljivanje: svako u opštini može dodeliti članu iste opštine; okružni+ za više nivoe","V","§11.10"],
+["Predlozi podtaskova: rutiranje generalnom + specijalizovanom po tipu parenta, prvi odlučuje","V","§11.11"],
+["Akcije na predlogu: odobri / odobri sa izmenama / odbij; nevidljivi do odobrenja","V","§11.11"],
+["Kaskadno auto-odbijanje pending predloga pri otkazivanju/završavanju parenta","S","§21.4"],
+["Filtriranje (status, tip, prioritet, izvršilac, faza) + pretraga po naslovu","V","§11.13"]
+]},
+{id:"E9",ms:"M4",naziv:"REST API",ref:"§20",t:[
+["API konvencije: verzionisanje, paginacija, error format","V","§20.1"],
+["Auth middleware: token, blacklist, status, nivo + lokacija (geografski RBAC)","V","§20.2"],
+["Endpoints: geografija (regioni/okruzi/opštine)","V","§20.3"],
+["Endpoints: korisnici, uloge, registracija (optimistic locking), PATCH specijalizacije","V","§20.3"],
+["Endpoints: faze, šabloni, instance, predlog/potvrda zatvaranja, revert","V","§20.3"],
+["Endpoints: taskovi, podtaskovi, izvršioci, watcheri, komentari, attachmenti","V","§20.3"],
+["Endpoints: predlozi podtaskova (kreiranje, odobravanje)","V","§20.3"],
+["Endpoints: resursi, inbox, analitika (dashboard matrice)","V","§20.3"],
+["API zaštita: input validacija, mass-assignment zaštita, IDOR provere","V","§17.19"]
+]},
+{id:"E10",ms:"M4",naziv:"Notifikacije, inbox, WebSocket",ref:"§16,§19.8",t:[
+["Email notifikacije (registracija, podsetnici) uz minimizaciju sadržaja","V","§16,§17.10"],
+["Inbox stavke po ulozi (organizacione samo generalnom)","V","§16,§22.2"],
+["WebSocket server /ws/inbox/ sa JWT autentifikacijom na konekciji","V","§16,§20.3"],
+["Redis pub/sub kao channel layer; eventi inbox_new i inbox_count","V","§16"],
+["WS klijent: reconnect + heartbeat","S","§16,§18"],
+["Nginx WebSocket upgrade proxy","S","§18"]
+]},
+{id:"E11",ms:"M5",naziv:"Frontend — osnova i stranice",ref:"§22.1",t:[
+["Setup: React 18 + TS + TanStack Query + Zustand + Tailwind + shadcn/ui","V","§18"],
+["Ruter sa svim stranicama iz §22.1 (login, registracija, dashboard, taskovi, faze, mapa, resursi, hijerarhija, korisnici, profil, admin)","V","§22.1"],
+["/login — Keycloak flow (email + password + 2FA)","V","§22.1"],
+["/registracija — 2 koraka + friendly poruka za istekao token","V","§22.1"],
+["/profil — kontakti, status (pauza), podešavanja","S","§22.1"],
+["Selektor uloge/lokacije za korisnike sa više uloga","V","§9.3,§12"],
+["Paleta boja iz §22.4 kroz ceo UI","S","§22.4"]
+]},
+{id:"E12",ms:"M5",naziv:"Frontend — dashboardi po ulogama",ref:"§12,§22.2",t:[
+["Dashboard glavnog: matrica regioni×faze + drill-down (okruzi, opštine), read-only drugi regioni","V","§12.1"],
+["Dashboard regionalnog: matrica okruzi×faze + drill-down, problematične opštine prve","V","§12.2"],
+["Dashboard okružnog: matrica opštine×faze + mini regionalna matrica (read-only kontekst)","V","§12.3"],
+["Dashboard opštinskog: progress po fazama + anonimno poređenje + tim","V","§12.4"],
+["Dashboard člana tima: moji taskovi, otvoreni za prijavu, status predloga, resursi","V","§12.5"],
+["Liste kašnjenja sortirane po ozbiljnosti (crvene pa žute)","V","§12.1–12.3"],
+["Inbox widget po ulozi; specijalizovani ne vide organizacione stavke","V","§22.2"],
+["Statistike (opštine, aktivne, kašnjenja, blokade, zahtevi)","S","§12"],
+["Kanban/lista toggle za taskove","S","§12.6"]
+]},
+{id:"E13",ms:"M5",naziv:"Frontend — taskovi, hijerarhija, resursi",ref:"§8,§11,§14,§15",t:[
+["/taskovi — lista/kanban sa filterima i pretragom","V","§11.13,§22.1"],
+["/taskovi/:id — detalj: atributi, izvršioci, watcheri, komentari, attachmenti, audit","V","§22.1"],
+["Forme kreiranja/izmene taska + van-faze žuta traka","V","§11.7"],
+["UI za predloge podtaskova (podnošenje, odobravanje sa izmenama)","V","§11.11"],
+["/faze — upravljanje fazama i šablonima (samo glavni) sa upozorenjima","V","§10.6,§22.1"],
+["/hijerarhija — stablo koordinatora po pravilima vidljivosti, 'Nedodeljeno' samo za generalnog opštinskog","V","§8"],
+["Akcije ukloni/postavi/promeni specijalizaciju iz mape hijerarhije","V","§8.5"],
+["/korisnici — imenik tima sa kontaktima koje je korisnik podelio","S","§22.1"],
+["/resursi — biblioteka (fajl/link), pretraga; kreiranje samo glavni/regionalni/admin","V","§14"],
+["Komentari i attachmenti na taskovima (validacija, 25MB, ClamAV)","V","§15"]
+]},
+{id:"E14",ms:"M5",naziv:"Geografska mapa (Leaflet)",ref:"§13,§22.3",t:[
+["Leaflet + GeoJSON granice opština Srbije","V","§13.4"],
+["Pogled 1: Napredak po fazama (choropleth)","V","§13.2"],
+["Pogled 2: Aktivni taskovi (bubble)","S","§13.2"],
+["Pogled 3: Kašnjenja (choropleth)","V","§13.2"],
+["Pogled 4: Veličina timova (bubble)","S","§13.2"],
+["Klik na opštinu → opštinski dashboard (CRUD/read-only po domenu)","V","§13.3"],
+["Prava pristupa: član tima nema mapu; read-only agregati van domena","V","§13.1"],
+["Mini mapa na dashboardu + puna stranica, zoom, legenda, isticanje svog domena","S","§13.3"]
+]},
+{id:"E15",ms:"M6",naziv:"Bezbednost",ref:"§17",t:[
+["HTTP security headers na Nginx-u (CSP, HSTS, X-Frame…)","V","§17.8"],
+["Višeslojni rate limiting (Nginx per-IP, aplikativni, registracija)","V","§17.11"],
+["Enkripcija: TLS 1.3, at-rest, backup enkripcija","V","§17.7"],
+["Fajl upload zaštita: tip/veličina validacija, ClamAV scan, izolovan store","V","§17.9"],
+["GDPR/ZZPL: minimizacija, pravo na zaborav (anonimizacija), evidencija obrade","V","§17.12"],
+["Backup strategija + test restore procedure","V","§17.13"],
+["Soft-delete politika svuda + admin revert 24h","V","§17.14"],
+["Optimistic locking / concurrent operations zaštita","S","§17.18"],
+["PWA cache politika (bez keširanja osetljivih podataka)","S","§17.20"],
+["Credentials management (secrets van repo-a, rotacija)","V","§17.21"],
+["Log policy: bez PII u logovima, retencija","S","§17.22"],
+["Insajder pretnje: audit sve akcije, princip najmanjih privilegija","S","§17.25"],
+["Incident response plan","S","§17.28"],
+["Pentest pre lansiranja (obavezan)","V","§17.23"]
+]},
+{id:"E16",ms:"M7",naziv:"Performanse, testovi, dokumentacija",ref:"§23–25",t:[
+["Redis cache za dashboard matrice","S","§23"],
+["PgBouncer (po potrebi skaliranja)","N","§23"],
+["Unit testovi >70% biznis logike (RBAC, faze, taskovi, registracija, soft-delete)","V","§24"],
+["Integration testovi: Keycloak↔backend, registracija, predlozi, token revokacija","V","§24"],
+["E2E (Playwright): login sa 2FA, kreiranje taska, self-assign, dashboard","V","§24"],
+["Performance test: 100 concurrent korisnika","S","§24"],
+["Security test: OWASP ZAP + RBAC matrica (uloge×lokacije×akcije)","V","§24"],
+["Onboarding video (registracija, 2FA, navigacija)","S","§25"],
+["FAQ + uputstvo za koordinatore + uputstvo za članove tima","S","§25"],
+["Bezbednosno uputstvo za korisnike (browser, 2FA recovery, VPN)","V","§25,§17.24"]
+]}
+];
+
+// ---------- state ----------
+let state = {};           // taskKey -> status (0-3)
+let custom = {};          // epicId -> [{n,p,ref}]
+let openEpics = {};       // epicId -> bool
+let hideDone = false;
+let msFilter = "";
+let nextCustomId = 1;
+PLAN.forEach(e => openEpics[e.id] = true);
+
+const key = (eid,i,c) => (c?'c':'t') + eid + '_' + i;
+const ST_LABELS = ["Otvoren","U toku","Blokiran","Završen"];
+const PRI_LABELS = {V:"Visok",S:"Srednji",N:"Nizak"};
+
+function allTasks(e){
+  const base = e.t.map((t,i)=>({k:key(e.id,i,false), n:t[0], p:t[1], ref:t[2], custom:false, idx:i}));
+  const cus = (custom[e.id]||[]).map((t,i)=>({k:t.k, n:t.n, p:t.p, ref:"custom", custom:true, idx:i}));
+  return base.concat(cus);
+}
+function st(k){ return state[k]||0; }
+
+function matches(t){
+  const q = document.getElementById('q').value.toLowerCase();
+  const fs = document.getElementById('fSt').value;
+  const fp = document.getElementById('fPri').value;
+  if(q && !(t.n.toLowerCase().includes(q) || (t.ref||'').toLowerCase().includes(q))) return false;
+  if(fs!=="" && String(st(t.k))!==fs) return false;
+  if(fp && t.p!==fp) return false;
+  if(hideDone && st(t.k)===3) return false;
+  return true;
+}
+
+function render(){
+  // stats per milestone
+  let sh = "";
+  let gAll=0,gDone=0;
+  const msAgg = {};
+  PLAN.forEach(e=>{
+    const ts = allTasks(e);
+    if(!msAgg[e.ms]) msAgg[e.ms]={a:0,d:0};
+    ts.forEach(t=>{ msAgg[e.ms].a++; if(st(t.k)===3) msAgg[e.ms].d++; gAll++; if(st(t.k)===3) gDone++; });
+  });
+  Object.keys(MS).forEach(m=>{
+    const a=msAgg[m]||{a:0,d:0};
+    const pct=a.a?Math.round(a.d/a.a*100):0;
+    sh += `<div class="stat ${msFilter===m?'on':''}" onclick="toggleMs('${m}')">
+      <div class="mn">${m} · ${MS[m]}</div><div class="mp">${pct}%</div>
+      <div class="pbar"><div style="width:${pct}%;background:${pct===100?'var(--zelena)':'var(--plava)'}"></div></div>
+    </div>`;
+  });
+  document.getElementById('stats').innerHTML = sh;
+  document.getElementById('tAll').textContent = gAll;
+  document.getElementById('tDone').textContent = gDone;
+  const gp = gAll?Math.round(gDone/gAll*100):0;
+  document.getElementById('tPct').textContent = gp+'%';
+  document.getElementById('tBar').style.width = gp+'%';
+  document.getElementById('fOpen').classList.toggle('on',hideDone);
+
+  // epics
+  let h="";
+  PLAN.forEach(e=>{
+    if(msFilter && e.ms!==msFilter) return;
+    const ts = allTasks(e);
+    const done = ts.filter(t=>st(t.k)===3).length;
+    const vis = ts.filter(matches);
+    const filtering = document.getElementById('q').value || document.getElementById('fSt').value!=="" || document.getElementById('fPri').value || hideDone;
+    if(filtering && vis.length===0) return;
+    const pct = ts.length?Math.round(done/ts.length*100):0;
+    h += `<div class="epic ${openEpics[e.id]?'open':''}" id="ep_${e.id}">
+      <div class="ehead" onclick="toggleEpic('${e.id}')">
+        <span class="arrow">▶</span>
+        <span class="ename">${e.naziv}<span class="ref">${e.ref}</span></span>
+        <span class="ems">${MS[e.ms]}</span>
+        <span class="ecount">${done}/${ts.length}</span>
+        <span class="ebar pbar"><span style="display:block;height:100%;width:${pct}%;background:${pct===100?'var(--zelena)':'var(--plava)'};border-radius:6px"></span></span>
+      </div>
+      <div class="tasks">`;
+    vis.forEach(t=>{
+      const s = st(t.k);
+      h += `<div class="task ${s===3?'done':''}">
+        <select class="st st${s}" onchange="setSt('${t.k}',this.value)">
+          ${ST_LABELS.map((l,i)=>`<option value="${i}" ${i===s?'selected':''}>${l}</option>`).join('')}
+        </select>
+        <span class="tname">${t.n}<span class="ref">${t.ref}</span></span>
+        <span class="pri pri${t.p}">${PRI_LABELS[t.p]}</span>
+        ${t.custom?`<button class="del" title="Obriši" onclick="delCustom('${e.id}','${t.k}')">✕</button>`:`<span class="del"> </span>`}
+      </div>`;
+    });
+    h += `<div class="addrow">
+        <input type="text" id="add_${e.id}" placeholder="Dodaj novi task…" onkeydown="if(event.key==='Enter')addTask('${e.id}')">
+        <select id="pri_${e.id}"><option value="S">Srednji</option><option value="V">Visok</option><option value="N">Nizak</option></select>
+        <button class="btn" onclick="addTask('${e.id}')">Dodaj</button>
+      </div></div></div>`;
+  });
+  document.getElementById('epics').innerHTML = h || '<div class="empty">Nema taskova za izabrane filtere.</div>';
+}
+
+function setSt(k,v){ state[k]=parseInt(v); render(); }
+function toggleEpic(id){ openEpics[id]=!openEpics[id]; render(); }
+function toggleMs(m){ msFilter = msFilter===m ? "" : m; render(); }
+function expandAll(v){ PLAN.forEach(e=>openEpics[e.id]=v); render(); }
+function addTask(eid){
+  const inp = document.getElementById('add_'+eid);
+  const n = inp.value.trim(); if(!n) return;
+  const p = document.getElementById('pri_'+eid).value;
+  if(!custom[eid]) custom[eid]=[];
+  custom[eid].push({k:'c'+eid+'_'+(nextCustomId++), n, p});
+  inp.value=''; render();
+  document.getElementById('add_'+eid).focus();
+}
+function delCustom(eid,k){
+  custom[eid] = (custom[eid]||[]).filter(t=>t.k!==k);
+  delete state[k]; render();
+}
+function exportJSON(){
+  const blob = new Blob([JSON.stringify({state,custom,nextCustomId,datum:new Date().toISOString()},null,2)],{type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'mreza-poverenja-napredak.json';
+  a.click();
+}
+function importJSON(inp){
+  const f = inp.files[0]; if(!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try{
+      const d = JSON.parse(r.result);
+      state = d.state||{}; custom = d.custom||{}; nextCustomId = d.nextCustomId||1000;
+      render();
+    }catch(e){ alert('Nevažeći JSON fajl.'); }
+  };
+  r.readAsText(f);
+  inp.value='';
+}
+render();
+</script>
+</body>
+</html>

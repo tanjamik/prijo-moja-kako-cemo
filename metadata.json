@@ -1,0 +1,6 @@
+{
+  "name": "Struktura Ljudi",
+  "description": "Jedinstvena tabela i dashboard za upravljanje ljudima sa podrškom za uvoz i izvoz Excel tabela.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
