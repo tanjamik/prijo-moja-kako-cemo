@@ -102,6 +102,40 @@ body {
 </head>
 <body>
 
+<div id="pwGate" style="position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:#0f172a;font-family:'Inter',ui-sans-serif,system-ui,sans-serif">
+  <div style="width:100%;max-width:360px;margin:0 20px;background:#1e293b;border:1px solid #334155;border-radius:16px;padding:32px 28px;box-shadow:0 20px 60px rgba(0,0,0,.45)">
+    <h1 style="margin:0 0 6px;color:#f1f5f9;font-size:20px;font-weight:700;text-align:center">Koordinator</h1>
+    <p style="margin:0 0 20px;color:#94a3b8;font-size:13px;text-align:center">Unesite lozinku za pristup</p>
+    <form id="pwForm" autocomplete="off">
+      <input id="pwInput" type="password" placeholder="Lozinka" autofocus
+        style="width:100%;box-sizing:border-box;padding:12px 14px;border-radius:10px;border:1px solid #334155;background:#0f172a;color:#f1f5f9;font-size:15px;outline:none" />
+      <p id="pwError" style="display:none;margin:10px 0 0;color:#f87171;font-size:13px;text-align:center">Pogrešna lozinka</p>
+      <button type="submit"
+        style="width:100%;margin-top:16px;padding:12px;border:none;border-radius:10px;background:#6366f1;color:#fff;font-size:15px;font-weight:600;cursor:pointer">Uđi</button>
+    </form>
+  </div>
+</div>
+<script>
+(function () {
+  var PASSWORD = 'prijomoja';
+  var KEY = 'koordinator_unlocked';
+  var gate = document.getElementById('pwGate');
+  function unlock() { gate.parentNode.removeChild(gate); document.body.style.overflow = ''; }
+  if (sessionStorage.getItem(KEY) === '1') { unlock(); return; }
+  document.body.style.overflow = 'hidden';
+  document.getElementById('pwForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var val = document.getElementById('pwInput').value;
+    if (val === PASSWORD) { sessionStorage.setItem(KEY, '1'); unlock(); }
+    else {
+      document.getElementById('pwError').style.display = 'block';
+      document.getElementById('pwInput').value = '';
+      document.getElementById('pwInput').focus();
+    }
+  });
+})();
+</script>
+
 <svg style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true" focusable="false">
   <defs>
 <symbol id="lu-arrow-down" viewBox="0 0 24 24"><path d="M12 5v14" />
